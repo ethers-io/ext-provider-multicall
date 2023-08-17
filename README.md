@@ -76,6 +76,13 @@ easily lead to deadlock, if a response is `await`-ed without another
 execution in the event loop to trigger a drain.
 
 
+Notes
+-----
+
+This is designed for Ethers v6. For Ethers v5, see the old
+[Multicaller](https://github.com/ricmoo/multicall/tree/main).
+
+
 License
 -------
 
