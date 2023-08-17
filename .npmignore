@@ -1,0 +1,16 @@
+
+# Ignore TypeScript config and caches
+tsconfig.*.json
+tsconfig.tsbuildinfo
+rollup.config.js
+rollup.config.cjs
+rollup.config.mjs
+output/**
+.github/**
+
+
+# Ignore random junk
+.DS_Store
+node_modules/**
+misc/**
+**/*.tgz
