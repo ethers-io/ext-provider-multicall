@@ -1,5 +1,5 @@
 import {
-    AbstractProvider, Interface,
+    AbiCoder, AbstractProvider,
     assertArgument, concat
 } from "ethers";
 
@@ -9,17 +9,7 @@ import type {
 //    BlockTag
 } from "ethers";
 
-import { abi, bin } from "./_contract.js";
-
-const iface = new Interface(abi);
-
-/*
-export type MulticallPerformActionRequest = PerformActionRequest | {
-    method: "callWithFailure",
-    transaction: PerformActionTransaction,
-    blockTag: BlockTag
-};
-*/
+import { bin } from "./_contract.js";
 
 export type DebugEventMulticallProvider = {
     action: "sendMulticall",
@@ -36,7 +26,7 @@ export type DebugEventMulticallProvider = {
 export type CallResult = { status: boolean, data: string };
 
 interface CallHandle {
-    request: { to: string, data: string, allowFailure: boolean };
+    request: { to: string, data: string };
     resolve: (result: any) => void;
     reject: (error: any) => void;
 }
@@ -85,10 +75,7 @@ export class MulticallProvider extends AbstractProvider {
         }
     };
 
-    //queueCall(to: string, data: string, _allowFailure?: boolean): Promise<CallResult> {
     queueCall(to: string, data: string): Promise<CallResult> {
-        const allowFailure = true; //(_allowFailure == null) ? true: !!_allowFailure;
-
         if (this.#drainTimer == null && this.#drainInterval >= 0) {
             this.#drainTimer = setTimeout(() => {
                 this.drainCallQueue();
@@ -96,7 +83,7 @@ export class MulticallProvider extends AbstractProvider {
         }
 
         return new Promise((resolve, reject) => {
-            this.#callQueue.push({ request: { to, data, allowFailure }, resolve, reject });
+            this.#callQueue.push({ request: { to, data }, resolve, reject });
         });
     }
 
@@ -106,9 +93,11 @@ export class MulticallProvider extends AbstractProvider {
         const callQueue = this.#callQueue;
         this.#callQueue = [ ];
 
-        const data = concat([ bin, iface.encodeDeploy([
+        const data = concat([ bin, AbiCoder.defaultAbiCoder().encode([
+            "tuple(address, bytes)[]"
+        ], [
             callQueue.map(({ request }) => {
-                return [ request.to, request.allowFailure, request.data ];
+                return [ request.to, request.data ];
             })
         ])]);
 
@@ -119,8 +108,11 @@ export class MulticallProvider extends AbstractProvider {
             })
         });
 
-        const _results = await this.subprovider.call({ data });
-        const results = iface.decodeFunctionResult("aggregate3", _results)[0];
+        const _data = await this.subprovider.call({ data });
+
+        const [ blockNumber, results ] = AbiCoder.defaultAbiCoder().decode([ "uint", "tuple(bool, bytes)[]"], _data);
+
+        if (blockNumber) { }  // @TODO: check block number
 
         this.emit("debug", {
             action: "receiveMulticallResult", data,
@@ -157,7 +149,7 @@ export class MulticallProvider extends AbstractProvider {
             if (result.status) { return <T>result.data; }
 
             // Throw a CallException
-            throw iface.makeError(result.data, { to, data });
+            throw AbiCoder.getBuiltinCallException("call", { to, data }, result.data);
         }
 
         return await this.subprovider._perform(req);
