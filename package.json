@@ -24,7 +24,7 @@
   ],
   "scripts": {
     "auto-build": "npm run build -- -w",
-    "build-solc": "solcjs contracts/multicall3.sol --bin --abi -o misc/output && node lib.esm/_build.js",
+    "build-solc": "solcjs contracts/multicall.sol --optimize --optimize-runs 1 --bin --abi -o misc/output && node lib.esm/_build.js",
     "build": "tsc --build ./tsconfig.esm.json",
     "build-all": "npm run build && npm run build-commonjs",
     "build-clean": "npm run clean && npm run build-all",

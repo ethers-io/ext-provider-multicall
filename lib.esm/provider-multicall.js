@@ -19,9 +19,8 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
 var _MulticallProvider_callQueue, _MulticallProvider_drainInterval, _MulticallProvider_drainTimer;
-import { AbstractProvider, Interface, assertArgument, concat } from "ethers";
-import { abi, bin } from "./_contract.js";
-const iface = new Interface(abi);
+import { AbiCoder, AbstractProvider, assertArgument, concat } from "ethers";
+import { bin } from "./_contract.js";
 export class MulticallProvider extends AbstractProvider {
     constructor(provider) {
         super();
@@ -62,16 +61,14 @@ export class MulticallProvider extends AbstractProvider {
         }
     }
     ;
-    //queueCall(to: string, data: string, _allowFailure?: boolean): Promise<CallResult> {
     queueCall(to, data) {
-        const allowFailure = true; //(_allowFailure == null) ? true: !!_allowFailure;
         if (__classPrivateFieldGet(this, _MulticallProvider_drainTimer, "f") == null && __classPrivateFieldGet(this, _MulticallProvider_drainInterval, "f") >= 0) {
             __classPrivateFieldSet(this, _MulticallProvider_drainTimer, setTimeout(() => {
                 this.drainCallQueue();
             }, __classPrivateFieldGet(this, _MulticallProvider_drainInterval, "f")), "f");
         }
         return new Promise((resolve, reject) => {
-            __classPrivateFieldGet(this, _MulticallProvider_callQueue, "f").push({ request: { to, data, allowFailure }, resolve, reject });
+            __classPrivateFieldGet(this, _MulticallProvider_callQueue, "f").push({ request: { to, data }, resolve, reject });
         });
     }
     drainCallQueue() {
@@ -79,9 +76,11 @@ export class MulticallProvider extends AbstractProvider {
             __classPrivateFieldSet(this, _MulticallProvider_drainTimer, null, "f");
             const callQueue = __classPrivateFieldGet(this, _MulticallProvider_callQueue, "f");
             __classPrivateFieldSet(this, _MulticallProvider_callQueue, [], "f");
-            const data = concat([bin, iface.encodeDeploy([
+            const data = concat([bin, AbiCoder.defaultAbiCoder().encode([
+                    "tuple(address, bytes)[]"
+                ], [
                     callQueue.map(({ request }) => {
-                        return [request.to, request.allowFailure, request.data];
+                        return [request.to, request.data];
                     })
                 ])]);
             this.emit("debug", {
@@ -90,8 +89,9 @@ export class MulticallProvider extends AbstractProvider {
                     return { to: request.to, data: request.data };
                 })
             });
-            const _results = yield this.subprovider.call({ data });
-            const results = iface.decodeFunctionResult("aggregate3", _results)[0];
+            const _data = yield this.subprovider.call({ data });
+            const [blockNumber, results] = AbiCoder.defaultAbiCoder().decode(["uint", "tuple(bool, bytes)[]"], _data);
+            if (blockNumber) { } // @TODO: check block number
             this.emit("debug", {
                 action: "receiveMulticallResult", data,
                 call: callQueue.map(({ request }, i) => {
@@ -125,7 +125,7 @@ export class MulticallProvider extends AbstractProvider {
                     return result.data;
                 }
                 // Throw a CallException
-                throw iface.makeError(result.data, { to, data });
+                throw AbiCoder.getBuiltinCallException("call", { to, data }, result.data);
             }
             return yield this.subprovider._perform(req);
         });
