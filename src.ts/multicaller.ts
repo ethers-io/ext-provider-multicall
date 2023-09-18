@@ -10,19 +10,18 @@ export interface Call {
     data: string;
 }
 
-export interface PreparedCall {
-    resolve: () => Promise<Call>;
-    decode: (data: string) => Result;
-}
-
 export interface CallResult {
     status: boolean;
     data: string;
 }
 
-//function isPreparedCall(value: any): value is PreparedCall {
-//    return (value && typeof(value.resolve) === "function");
-//}
+
+// DeferredCall?
+export interface PreparedCall {
+    resolve: () => Promise<Call>;
+    decode: (status: boolean, data: string) => Result;
+}
+
 
 export class Multicaller {
     readonly provider: Provider;
@@ -54,7 +53,7 @@ export class Multicaller {
 
         return Result.fromItems(results.map(({ status, data }, index) => {
             try {
-                return _calls[index].decode(data);
+                return _calls[index].decode(status, data);
             } catch (error) {
                 return error;
             }
