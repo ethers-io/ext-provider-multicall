@@ -5,13 +5,15 @@ The MulticallProvider is designed to reduce the latency and large
 number of calls that can occur, especially on the initial loading
 of page.
 
-It uses a modified version of the [multicall3](https://www.multicall3.com)
-contract in a initcode Ethereum call to aggregate many calls into a single
-`call` request to a node.
-
-This does not require the multicall contract be deployed to the network,
-but is only designed to assist in read-only call operations, and does not
+This does not require any multicall contract be deployed to the network,
+and does not deploy any multicall contract to the network. It is only
+designed to assist in read-only call operations, and does not
 currently support sending multicall transactions.
+
+For inspiration, see:
+
+- [Ethers v5 multicall](https://github.com/ricmoo/multicall)
+- [multicall3](https://www.multicall3.com)
 
 
 Installing
@@ -74,6 +76,17 @@ then the `provider.drainCallQueue` MUST be called manually.
 Pay special attention when using manual a `drainInterval`, as it can
 easily lead to deadlock, if a response is `await`-ed without another
 execution in the event loop to trigger a drain.
+
+
+Contributing
+------------
+
+If the multicall contract is changed (`./contracts/multicall.sol`),
+then you must call `npm run build-solc` before the changes will be
+added to the `./src.ts/_contract.ts` file, which is a TypeScript
+version of the ABI and bytecode, generated using `./src.ts/_build.ts`.
+
+Please open a discussion before making any changes. `:o)`.
 
 
 Notes
