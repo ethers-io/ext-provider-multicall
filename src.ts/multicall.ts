@@ -10,3 +10,6 @@ export function encodeCall(calls: Array<{ to: string, data: string }>): string {
         ], [ calls ])]);
 }
 
+export function decodeResult(data: string): Result {
+    throw new Error("not implemented");
+}
