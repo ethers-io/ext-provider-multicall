@@ -6,7 +6,7 @@
     "ethers": "^6.7.0"
   },
   "devDependencies": {
-    "solc": "^0.8.21",
+    "solc": "0.8.21",
     "typescript": "^5.0.0"
   },
   "exports": {
