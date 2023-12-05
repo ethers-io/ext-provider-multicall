@@ -1,1 +1,1 @@
-{"version":3,"file":"multicall.d.ts","sourceRoot":"","sources":["../src.ts/multicall.ts"],"names":[],"mappings":"AAMA,wBAAgB,UAAU,CAAC,KAAK,EAAE,KAAK,CAAC;IAAE,EAAE,EAAE,MAAM,CAAC;IAAC,IAAI,EAAE,MAAM,CAAA;CAAE,CAAC,GAAG,MAAM,CAI7E"}
+{"version":3,"file":"multicall.d.ts","sourceRoot":"","sources":["../src.ts/multicall.ts"],"names":[],"mappings":"AAMA,OAAO,KAAK,EAAE,MAAM,EAAE,MAAM,QAAQ,CAAC;AAErC,wBAAgB,UAAU,CAAC,KAAK,EAAE,KAAK,CAAC;IAAE,EAAE,EAAE,MAAM,CAAC;IAAC,IAAI,EAAE,MAAM,CAAA;CAAE,CAAC,GAAG,MAAM,CAI7E;AAED,wBAAgB,YAAY,CAAC,IAAI,EAAE,MAAM,GAAG,MAAM,CAEjD"}

@@ -6,4 +6,7 @@ export function encodeCall(calls) {
             "tuple(address to, bytes data)[]"
         ], [calls])]);
 }
+export function decodeResult(data) {
+    throw new Error("not implemented");
+}
 //# sourceMappingURL=multicall.js.map
