@@ -60,7 +60,7 @@ Create a new MulticallProvider using `provider` as the transport.
 Place a call into the queue to be called on the next drain. Any normal
 `provider.call` will call this internally.
 
-### `provider.drainCallQueue() => Promise<Array<{ status: boolean, data: string }>>`
+### `provider.drainCallQueue() => Promise<void>`
 
 Regardless of the remaining time before the `drainInterval`, trigger all
 calls. This **must** be called explicitly when using *manual drain* (i.e.
