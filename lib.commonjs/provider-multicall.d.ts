@@ -1,5 +1,5 @@
 import { AbstractProvider } from "ethers";
-import type { PerformActionRequest } from "ethers";
+import type { PerformActionRequest, BlockTag } from "ethers";
 export type DebugEventMulticallProvider = {
     action: "sendMulticall";
     calls: Array<{
@@ -27,8 +27,8 @@ export declare class MulticallProvider extends AbstractProvider {
     constructor(provider: AbstractProvider);
     get drainInterval(): number;
     set drainInterval(value: number);
-    queueCall(to: string, data: string): Promise<CallResult>;
-    drainCallQueue(): Promise<Array<CallResult>>;
+    queueCall(to: string, data: string, blockTag?: BlockTag): Promise<CallResult>;
+    drainCallQueue(): Promise<void>;
     _detectNetwork(): Promise<import("ethers").Network>;
     _perform<T = any>(req: PerformActionRequest): Promise<T>;
 }

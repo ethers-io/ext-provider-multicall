@@ -64,54 +64,75 @@ class MulticallProvider extends ethers_1.AbstractProvider {
         }
     }
     ;
-    queueCall(to, data) {
+    queueCall(to, data, blockTag) {
         if (__classPrivateFieldGet(this, _MulticallProvider_drainTimer, "f") == null && __classPrivateFieldGet(this, _MulticallProvider_drainInterval, "f") >= 0) {
             __classPrivateFieldSet(this, _MulticallProvider_drainTimer, setTimeout(() => {
                 this.drainCallQueue();
             }, __classPrivateFieldGet(this, _MulticallProvider_drainInterval, "f")), "f");
         }
         return new Promise((resolve, reject) => {
-            __classPrivateFieldGet(this, _MulticallProvider_callQueue, "f").push({ request: { to, data }, resolve, reject });
+            __classPrivateFieldGet(this, _MulticallProvider_callQueue, "f").push({ request: { to, data, blockTag }, resolve, reject });
         });
     }
     drainCallQueue() {
         return __awaiter(this, void 0, void 0, function* () {
             __classPrivateFieldSet(this, _MulticallProvider_drainTimer, null, "f");
-            const callQueue = __classPrivateFieldGet(this, _MulticallProvider_callQueue, "f");
+            const _callQueue = __classPrivateFieldGet(this, _MulticallProvider_callQueue, "f");
             __classPrivateFieldSet(this, _MulticallProvider_callQueue, [], "f");
-            const data = (0, ethers_1.concat)([_contract_js_1.bin, ethers_1.AbiCoder.defaultAbiCoder().encode([
-                    "tuple(address, bytes)[]"
-                ], [
-                    callQueue.map(({ request }) => {
-                        return [request.to, request.data];
+            const blockTags = _callQueue.reduce((accum, { request }) => {
+                const blockTag = request.blockTag;
+                if (blockTag != null && accum.indexOf(blockTag) === -1) {
+                    accum.push(blockTag);
+                }
+                return accum;
+            }, []);
+            const runners = [];
+            for (const blockTag of blockTags) {
+                const callQueue = _callQueue.filter(({ request }) => request.blockTag === blockTag);
+                const data = (0, ethers_1.concat)([_contract_js_1.bin, ethers_1.AbiCoder.defaultAbiCoder().encode([
+                        "tuple(address, bytes)[]"
+                    ], [
+                        callQueue.map(({ request }) => {
+                            return [request.to, request.data];
+                        })
+                    ])]);
+                this.emit("debug", {
+                    action: "sendMulticall", data,
+                    call: callQueue.map(({ request }) => {
+                        return { to: request.to, data: request.data };
                     })
-                ])]);
-            this.emit("debug", {
-                action: "sendMulticall", data,
-                call: callQueue.map(({ request }) => {
-                    return { to: request.to, data: request.data };
-                })
-            });
-            const _data = yield this.subprovider.call({ data });
-            const [blockNumber, results] = ethers_1.AbiCoder.defaultAbiCoder().decode(["uint", "tuple(bool, bytes)[]"], _data);
-            if (blockNumber) { } // @TODO: check block number
-            this.emit("debug", {
-                action: "receiveMulticallResult", data,
-                call: callQueue.map(({ request }, i) => {
-                    return {
-                        to: request.to, data: request.data,
-                        status: results[i][0], result: results[i][1]
-                    };
-                })
-            });
-            const output = [];
-            for (let i = 0; i < callQueue.length; i++) {
-                const result = results[i];
-                const { resolve } = callQueue[i];
-                resolve({ status: result[0], data: result[1] });
-                output.push({ status: result[0], data: result[1] });
+                });
+                runners.push((() => __awaiter(this, void 0, void 0, function* () {
+                    const _data = yield this.subprovider.call({ data, blockTag });
+                    const [_blockNumber, results] = ethers_1.AbiCoder.defaultAbiCoder().decode(["uint", "tuple(bool, bytes)[]"], _data);
+                    const blockNumber = (0, ethers_1.toQuantity)(_blockNumber);
+                    if (blockTag !== "latest" && blockTag !== "pending" && blockNumber !== blockTag) {
+                        callQueue.forEach(({ reject }) => {
+                            reject((0, ethers_1.makeError)("backend does not support archive access", "UNSUPPORTED_OPERATION", {
+                                operation: "call(blockTag)",
+                                info: { expectedBlockTag: blockTag, blockNumber }
+                            }));
+                        });
+                    }
+                    this.emit("debug", {
+                        action: "receiveMulticallResult", data,
+                        call: callQueue.map(({ request }, i) => {
+                            return {
+                                to: request.to, data: request.data,
+                                status: results[i][0], result: results[i][1]
+                            };
+                        })
+                    });
+                    const output = [];
+                    for (let i = 0; i < callQueue.length; i++) {
+                        const result = results[i];
+                        const { resolve } = callQueue[i];
+                        resolve({ status: result[0], data: result[1] });
+                        output.push({ status: result[0], data: result[1] });
+                    }
+                }))());
             }
-            return output;
+            yield Promise.all(runners);
         });
     }
     _detectNetwork() {
@@ -123,7 +144,7 @@ class MulticallProvider extends ethers_1.AbstractProvider {
                 const tx = req.transaction;
                 const to = (tx.to || null), data = (tx.data || "0x");
                 (0, ethers_1.assertArgument)(typeof (to) === "string", "deployment transactions unsupported", "tx.to", tx.to);
-                const result = yield this.queueCall(to, data);
+                const result = yield this.queueCall(to, data, req.blockTag);
                 if (result.status) {
                     return result.data;
                 }
