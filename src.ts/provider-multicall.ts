@@ -1,12 +1,12 @@
 import {
-    AbiCoder, AbstractProvider,
-    assertArgument, concat
+    AbiCoder, AbstractProvider, toQuantity,
+    assertArgument, concat, makeError
 } from "ethers";
 
 import type {
     PerformActionRequest,
 //    PerformActionTransaction,
-//    BlockTag
+    BlockTag
 } from "ethers";
 
 import { bin } from "./_contract.js";
@@ -26,7 +26,7 @@ export type DebugEventMulticallProvider = {
 export type CallResult = { status: boolean, data: string };
 
 interface CallHandle {
-    request: { to: string, data: string };
+    request: { to: string, data: string, blockTag?: BlockTag };
     resolve: (result: any) => void;
     reject: (error: any) => void;
 }
@@ -75,7 +75,7 @@ export class MulticallProvider extends AbstractProvider {
         }
     };
 
-    queueCall(to: string, data: string): Promise<CallResult> {
+    queueCall(to: string, data: string, blockTag?: BlockTag): Promise<CallResult> {
         if (this.#drainTimer == null && this.#drainInterval >= 0) {
             this.#drainTimer = setTimeout(() => {
                 this.drainCallQueue();
@@ -83,56 +83,81 @@ export class MulticallProvider extends AbstractProvider {
         }
 
         return new Promise((resolve, reject) => {
-            this.#callQueue.push({ request: { to, data }, resolve, reject });
+            this.#callQueue.push({ request: { to, data, blockTag }, resolve, reject });
         });
     }
 
-    async drainCallQueue(): Promise<Array<CallResult>> {
+    async drainCallQueue(): Promise<void> {
         this.#drainTimer = null;
 
-        const callQueue = this.#callQueue;
+        const _callQueue = this.#callQueue;
         this.#callQueue = [ ];
 
-        const data = concat([ bin, AbiCoder.defaultAbiCoder().encode([
-            "tuple(address, bytes)[]"
-        ], [
-            callQueue.map(({ request }) => {
-                return [ request.to, request.data ];
-            })
-        ])]);
+        const blockTags = _callQueue.reduce((accum, { request }) => {
+            const blockTag = request.blockTag;
+            if (blockTag != null && accum.indexOf(blockTag) === -1) {
+                accum.push(blockTag);
+            }
+            return accum;
+        }, <Array<BlockTag>>[ ]);
 
-        this.emit("debug", {
-            action: "sendMulticall", data,
-            call: callQueue.map(({ request }) => {
-                return { to: request.to, data: request.data };
-            })
-        });
+        const runners: Array<Promise<void>> = [ ];
 
-        const _data = await this.subprovider.call({ data });
+        for (const blockTag of blockTags) {
+            const callQueue = _callQueue.filter(({ request }) => request.blockTag === blockTag);
 
-        const [ blockNumber, results ] = AbiCoder.defaultAbiCoder().decode([ "uint", "tuple(bool, bytes)[]"], _data);
+            const data = concat([ bin, AbiCoder.defaultAbiCoder().encode([
+                "tuple(address, bytes)[]"
+            ], [
+                callQueue.map(({ request }) => {
+                    return [ request.to, request.data ];
+                })
+            ])]);
 
-        if (blockNumber) { }  // @TODO: check block number
+            this.emit("debug", {
+                action: "sendMulticall", data,
+                call: callQueue.map(({ request }) => {
+                    return { to: request.to, data: request.data };
+                })
+            });
 
-        this.emit("debug", {
-            action: "receiveMulticallResult", data,
-            call: callQueue.map(({ request }, i) => {
-                return {
-                    to: request.to, data: request.data,
-                    status: results[i][0], result: results[i][1]
-                };
-            })
-        });
+            runners.push((async () => {
 
-        const output: Array<CallResult> = [ ];
-        for (let i = 0; i < callQueue.length; i++) {
-            const result = results[i];
-            const { resolve } = callQueue[i];
-            resolve({ status: result[0], data: result[1] });
-            output.push({ status: result[0], data: result[1] });
+                const _data = await this.subprovider.call({ data, blockTag });
+
+                const [ _blockNumber, results ] = AbiCoder.defaultAbiCoder().decode([ "uint", "tuple(bool, bytes)[]"], _data);
+                const blockNumber = toQuantity(_blockNumber);
+
+                if (blockTag !== "latest" && blockTag !== "pending" && blockNumber !== blockTag) {
+                    callQueue.forEach(({ reject }) => {
+                        reject(makeError("backend does not support archive access", "UNSUPPORTED_OPERATION", {
+                            operation: "call(blockTag)",
+                            info: { expectedBlockTag: blockTag, blockNumber }
+                        }));
+                    });
+                }
+
+                this.emit("debug", {
+                    action: "receiveMulticallResult", data,
+                    call: callQueue.map(({ request }, i) => {
+                        return {
+                            to: request.to, data: request.data,
+                            status: results[i][0], result: results[i][1]
+                        };
+                    })
+                });
+
+                const output: Array<CallResult> = [ ];
+                for (let i = 0; i < callQueue.length; i++) {
+                    const result = results[i];
+                    const { resolve } = callQueue[i];
+                    resolve({ status: result[0], data: result[1] });
+                    output.push({ status: result[0], data: result[1] });
+                }
+            })());
         }
 
-        return output;
+        await Promise.all(runners);
     }
 
     _detectNetwork() {
@@ -145,7 +170,7 @@ export class MulticallProvider extends AbstractProvider {
             const to = (tx.to || null), data = (tx.data || "0x");
             assertArgument(typeof(to) === "string", "deployment transactions unsupported", "tx.to", tx.to);
 
-            const result = await this.queueCall(to, data);
+            const result = await this.queueCall(to, data, req.blockTag);
             if (result.status) { return <T>result.data; }
 
             // Throw a CallException

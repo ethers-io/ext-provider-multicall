@@ -1,9 +1,9 @@
 {
   "name": "@ethers-ext/provider-multicall",
-  "version": "6.0.0-beta.1",
+  "version": "6.0.0-beta.2",
   "description": "Ethers extension for a simple multicall-based Provider to batch calls.",
   "dependencies": {
-    "ethers": "^6.7.0"
+    "ethers": "^6.13.0"
   },
   "devDependencies": {
     "solc": "0.8.21",
