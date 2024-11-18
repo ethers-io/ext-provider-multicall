@@ -1,4 +1,4 @@
-Gerneated Code (CommonJS)
+Generated Code (CommonJS)
 =========================
 
 Do not modify code in this folder.
