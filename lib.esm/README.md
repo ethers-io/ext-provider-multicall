@@ -1,4 +1,4 @@
-Gerneated Code (ESM)
+Generated Code (ESM)
 ====================
 
 Do not modify code in this folder.
