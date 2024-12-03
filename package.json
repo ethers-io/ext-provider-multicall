@@ -3,10 +3,10 @@
   "version": "6.0.0-beta.2",
   "description": "Ethers extension for a simple multicall-based Provider to batch calls.",
   "dependencies": {
-    "ethers": "^6.13.0"
+    "ethers": "^6.13.4"
   },
   "devDependencies": {
-    "solc": "0.8.21",
+    "solc": "0.8.28",
     "typescript": "^5.0.0"
   },
   "exports": {
@@ -24,7 +24,7 @@
   ],
   "scripts": {
     "auto-build": "npm run build -- -w",
-    "build-solc": "solcjs contracts/multicall.sol --optimize --optimize-runs 1 --bin --abi -o misc/output && node lib.esm/_build.js",
+    "build-solc": "solcjs --standard-json --base-path . < solc-config.json > misc/output/result.json && node lib.esm/_build.js",
     "build": "tsc --build ./tsconfig.esm.json",
     "build-all": "npm run build && npm run build-commonjs",
     "build-clean": "npm run clean && npm run build-all",

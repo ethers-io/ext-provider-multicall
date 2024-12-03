@@ -10,7 +10,6 @@
       "dom"
     ],
     "module": "es6",
-    "moduleResolution": "node16",
     "noEmitOnError": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,

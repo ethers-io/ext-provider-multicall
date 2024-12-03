@@ -70,12 +70,12 @@ import { bin, abi } from "./_contract.js";
     const blockNumber = await provider.getBlockNumber();
     const ricmooEth = "0x5555763613a12d8f3e73be831dff8598089d3dca";
 
-    const [ name, sym, name_1, symbol_1 ] = await Promise.all([
+    const [ name, sym, balance, balance_1 ] = await Promise.all([
         contract.name({ blockTag: "latest" }),
         contract.symbol({ blockTag: "latest" }),
         contract.balanceOf(ricmooEth, { blockTag: "latest" }),
         contract.balanceOf(ricmooEth, { blockTag: blockNumber - 1 }),
     ]);
 
-    console.log({ name, sym, name_1, symbol_1 });
+    console.log({ name, sym, balance, balance_1 });
 })();
