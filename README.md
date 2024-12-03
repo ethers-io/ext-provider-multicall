@@ -33,11 +33,11 @@ import { MulticallProvider } from "@ethers-ext/provider-multicall";
 // Create the provider which will serve as the main transport
 const provider = new InfuraProvider();
 
-// Crate the multicall provider, which will aggregate calls
+// Create the multicall provider, which will aggregate calls
 const multicaller = new MulticallProvider(provider);
 
 // Connect your contracts to the multicaller
-const dai = new Contract("dai.tokens.ethers.eth, daiAbi, multicaller);
+const dai = new Contract("dai.tokens.ethers.eth", daiAbi, multicaller);
 
 // Make your multicalls
 const [ sym, name, totalSupply ] = await Promise.all([
